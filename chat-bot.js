@@ -8,21 +8,21 @@ const character = ``;
 // ここからは修正必要ありません
 // ========================
 
-const BOT_USER_ID =
-  PropertiesService.getScriptProperties().getProperty("BOT_USER_ID");
-const BOT_DM_CHANNEL_ID =
-  PropertiesService.getScriptProperties().getProperty("BOT_DM_CHANNEL_ID");
-const SLACK_TOKEN =
-  PropertiesService.getScriptProperties().getProperty("SLACK_TOKEN");
-const OPENAI_KEY =
-  PropertiesService.getScriptProperties().getProperty("OPENAI_KEY");
+const BOT_MEMBER_ID =
+  PropertiesService.getScriptProperties().getProperty("BOT_MEMBER_ID");
+const BOT_CHANNEL_ID =
+  PropertiesService.getScriptProperties().getProperty("BOT_CHANNEL_ID");
+const BOT_AUTH_TOKEN =
+  PropertiesService.getScriptProperties().getProperty("BOT_AUTH_TOKEN");
+const OPENAI_SECRET_KEY =
+  PropertiesService.getScriptProperties().getProperty("OPENAI_SECRET_KEY");
 
 const fetchMsgsInThread = (channelId, threadTimestamp) => {
   const url = `https://slack.com/api/conversations.replies?channel=${channelId}&ts=${threadTimestamp}`;
 
   const headers = {
     "Content-Type": "application/json",
-    Authorization: "Bearer " + SLACK_TOKEN,
+    Authorization: "Bearer " + BOT_AUTH_TOKEN,
   };
 
   const options = {
@@ -50,11 +50,11 @@ const fetchMsgsInThread = (channelId, threadTimestamp) => {
  */
 const fetchSlackMsgsAskedToBot = (triggerMsg) => {
   const isInThread = triggerMsg.thread_ts;
-  const isMenthionedBot = triggerMsg.text.includes(BOT_USER_ID);
+  const isMenthionedBot = triggerMsg.text.includes(BOT_MEMBER_ID);
 
   if (!isInThread) {
     // スレッド外の場合
-    if (triggerMsg.channel === BOT_DM_CHANNEL_ID || isMenthionedBot) {
+    if (triggerMsg.channel === BOT_CHANNEL_ID || isMenthionedBot) {
       // botとのDMの場合か、botへのメンションがある場合は応答
       return [triggerMsg];
     } else {
@@ -76,7 +76,7 @@ const fetchSlackMsgsAskedToBot = (triggerMsg) => {
       );
 
       const isBotInvolvedThread =
-        msgsInThread.find((msg) => msg.user === BOT_USER_ID) == null;
+        msgsInThread.find((msg) => msg.user === BOT_MEMBER_ID) == null;
       if (isBotInvolvedThread && !isMenthionedBot) {
         // botと無関係のスレッドの場合は無視
         return [];
@@ -108,8 +108,8 @@ const trimMentionText = (source) => {
 const parseSlackMsgsToChatGPTQuesryMsgs = (slackMsgs) => {
   // 配列の各要素を変換
   return slackMsgs.map((msg) => {
-    // BOT_USER_IDと比較して、送信者がユーザーかアシスタントかを判断（TODO: 必要？）
-    const role = msg.user == BOT_USER_ID ? "assistant" : "user";
+    // BOT_MEMBER_IDと比較して、送信者がユーザーかアシスタントかを判断（TODO: 必要？）
+    const role = msg.user == BOT_MEMBER_ID ? "assistant" : "user";
     // メンション部分を除去したテキストを取得
     const content = trimMentionText(msg.text);
     // 送信者の役割とテキストを含むメッセージオブジェクトを返す
@@ -146,7 +146,7 @@ const fetchAIAnswerText = (tiggerMsg) => {
     const res = UrlFetchApp.fetch(ENDPOINT, {
       method: "POST",
       headers: {
-        Authorization: "Bearer " + OPENAI_KEY,
+        Authorization: "Bearer " + OPENAI_SECRET_KEY,
         Accept: "application/json",
       },
       contentType: "application/json",
@@ -190,7 +190,7 @@ const slackPostMessage = (channelId, message, option) => {
 
   const headers = {
     "Content-Type": "application/json",
-    Authorization: "Bearer " + SLACK_TOKEN,
+    Authorization: "Bearer " + BOT_AUTH_TOKEN,
   };
 
   // メッセージデータ
@@ -246,7 +246,7 @@ const doPost = (e) => {
   const ts = triggerMsg.ts;
 
   // Bot自身によるメッセージである場合、OKを返して処理を終了する
-  if (userId === BOT_USER_ID) {
+  if (userId === BOT_MEMBER_ID) {
     return ContentService.createTextOutput("OK");
   }
 
